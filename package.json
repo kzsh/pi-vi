@@ -1,0 +1,9 @@
+{
+  "name": "pi-vi",
+  "version": "0.1.0",
+  "description": "Vim motions and modal editing for the pi agent input",
+  "license": "MIT",
+  "pi": {
+    "extensions": ["./index.ts"]
+  }
+}
