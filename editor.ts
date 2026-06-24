@@ -384,14 +384,16 @@ export class VimEditor extends CustomEditor {
     const pendingHint =
       this.pendingOp ?? (this.pendingG ? "g" : this.pendingR ? "r" : "");
     const countHint = this.countBuffer;
-    const hint =
-      countHint || pendingHint ? ` [${countHint}${pendingHint}]` : "";
+    const hint = countHint || pendingHint ? ` [${countHint}${pendingHint}]` : "";
+    const label = ` ${modeLabel}${hint} `;
 
-    const label = ` -- ${modeLabel} --${hint} `;
-
+    // Splice the label into the border a few characters in from the left.
+    const INDENT = 2;
     const lastLine = lines[last]!;
-    if (visibleWidth(lastLine) >= label.length) {
-      lines[last] = truncateToWidth(lastLine, width - label.length, "") + label;
+    if (visibleWidth(lastLine) >= INDENT + label.length) {
+      const before = truncateToWidth(lastLine, INDENT, "");
+      const after  = lastLine.slice(INDENT + label.length);
+      lines[last]  = before + label + after;
     }
 
     return lines;

@@ -9,18 +9,14 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { Theme } from "@earendil-works/pi-coding-agent";
 import { VimEditor } from "./editor.ts";
 import type { Mode } from "./editor.ts";
 
-function modeStatus(
-  theme: { fg(color: string, text: string): string },
-  mode: Mode,
-): string {
-  switch (mode) {
-    case "normal": return theme.fg("accent",  "-- NORMAL --");
-    case "insert": return theme.fg("muted",   "-- INSERT --");
-    case "ex":     return theme.fg("warning", "-- EX --");
-  }
+function modeStatus(theme: Theme, mode: Mode): string {
+  if (mode === "normal") return theme.fg("accent", " NORMAL ");
+  if (mode === "ex") return theme.fg("warning", " : ");
+  return theme.fg("dim", " INSERT ");
 }
 
 // Quit-like ex commands that map to ctx.shutdown().
@@ -36,10 +32,6 @@ export default function (pi: ExtensionAPI) {
     ctx.ui.setEditorComponent((tui, theme, kb) => {
       const editor = new VimEditor(tui, theme, kb);
 
-      editor.onModeChange = (mode) => {
-        ctx.ui.setStatus("vim", modeStatus(ctx.ui.theme, mode));
-      };
-
       editor.onExCommand = (cmd) => {
         if (QUIT_CMDS.has(cmd)) {
           ctx.shutdown();
@@ -48,6 +40,10 @@ export default function (pi: ExtensionAPI) {
         // Forward everything else as a pi slash command.
         // :new → /new, :compact → /compact, :model → /model, etc.
         pi.sendUserMessage(`/${cmd}`, { deliverAs: "followUp" });
+      };
+
+      editor.onModeChange = (mode) => {
+        ctx.ui.setStatus("vim", modeStatus(ctx.ui.theme, mode));
       };
 
       return editor;
