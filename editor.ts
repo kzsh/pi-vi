@@ -24,9 +24,9 @@
  */
 
 import { CustomEditor } from "@earendil-works/pi-coding-agent";
-import { matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { matchesKey, sliceByColumn, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
-export type Mode = "normal" | "insert" | "ex";
+export type Mode = "normal" | "insert";
 
 type PendingOp = "d" | "c" | "y";
 
@@ -65,12 +65,9 @@ export class VimEditor extends CustomEditor {
   private pendingOp: PendingOp | null = null;
   private pendingG = false;
   private pendingR = false;
-  private exBuffer = "";
 
   /** Called whenever the mode changes. Wire this up in the extension. */
   onModeChange?: (mode: Mode) => void;
-  /** Called when the user submits an ex command. Wire this up in the extension. */
-  onExCommand?: (cmd: string) => void;
 
   private setMode(mode: Mode): void {
     this.mode = mode;
@@ -97,10 +94,7 @@ export class VimEditor extends CustomEditor {
   override handleInput(data: string): void {
     // Escape always cancels pending state and returns to normal.
     if (matchesKey(data, "escape")) {
-      if (this.mode === "ex") {
-        this.exBuffer = "";
-        this.setMode("normal");
-      } else if (this.mode === "insert") {
+      if (this.mode === "insert") {
         this.setMode("normal");
         this.clearState();
       } else {
@@ -108,35 +102,6 @@ export class VimEditor extends CustomEditor {
         super.handleInput(data); // normal mode: abort agent, etc.
       }
       return;
-    }
-
-    // Ex mode: accumulate command, execute on Enter, cancel on Escape (above).
-    if (this.mode === "ex") {
-      if (matchesKey(data, "enter")) {
-        const cmd = this.exBuffer.trim();
-        this.exBuffer = "";
-        this.setMode("normal");
-        if (cmd) this.onExCommand?.(cmd);
-        return;
-      }
-      if (data === "\x7f" || data === "\x08") { // backspace
-        this.exBuffer = this.exBuffer.slice(0, -1);
-        if (this.exBuffer.length === 0) this.setMode("normal"); // mirrors vim
-        return;
-      }
-      if (data === "\x17") { // Ctrl+W: delete last word
-        this.exBuffer = this.exBuffer.replace(/\S+\s*$/, "");
-        return;
-      }
-      if (data === "\x15") { // Ctrl+U: clear buffer
-        this.exBuffer = "";
-        return;
-      }
-      if (data.length === 1 && data.charCodeAt(0) >= 32) {
-        this.exBuffer += data;
-        return;
-      }
-      return; // eat all other keys in ex mode
     }
 
     // Insert mode: everything is the editor's business.
@@ -282,9 +247,6 @@ export class VimEditor extends CustomEditor {
       case "p": case "P": this.send(S.paste, n); break;
       case "u": this.send(S.undo, n); break;
 
-      // Ex mode
-      case ":": this.exBuffer = ""; this.setMode("ex"); break;
-
       // Insert mode entry
       case "i": this.setMode("insert"); break;
       case "a": this.send(S.right); this.setMode("insert"); break;
@@ -374,12 +336,6 @@ export class VimEditor extends CustomEditor {
 
     const last = lines.length - 1;
 
-    if (this.mode === "ex") {
-      // Replace the bottom border with a vim-style ex command line.
-      lines[last] = truncateToWidth(`:${this.exBuffer}▌`, width);
-      return lines;
-    }
-
     const modeLabel = this.mode === "normal" ? "NORMAL" : "INSERT";
     const pendingHint =
       this.pendingOp ?? (this.pendingG ? "g" : this.pendingR ? "r" : "");
@@ -390,9 +346,10 @@ export class VimEditor extends CustomEditor {
     // Splice the label into the border a few characters in from the left.
     const INDENT = 2;
     const lastLine = lines[last]!;
-    if (visibleWidth(lastLine) >= INDENT + label.length) {
+    const labelWidth = visibleWidth(label);
+    if (visibleWidth(lastLine) >= INDENT + labelWidth) {
       const before = truncateToWidth(lastLine, INDENT, "");
-      const after  = lastLine.slice(INDENT + label.length);
+      const after  = sliceByColumn(lastLine, INDENT + labelWidth, width - INDENT - labelWidth);
       lines[last]  = before + label + after;
     }
 
