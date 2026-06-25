@@ -65,6 +65,11 @@ export class VimEditor extends CustomEditor {
   private pendingOp: PendingOp | null = null;
   private pendingG = false;
   private pendingR = false;
+  // Index of the bottom border line in the last super.render() output.
+  // Captured every render cycle where autocomplete is not showing so that
+  // when autocomplete IS showing (and appends suggestion lines after the
+  // border) we still know exactly where the border sits.
+  private _lastBorderIndex = 0;
 
   /** Called whenever the mode changes. Wire this up in the extension. */
   onModeChange?: (mode: Mode) => void;
@@ -334,8 +339,6 @@ export class VimEditor extends CustomEditor {
     const lines = super.render(width);
     if (lines.length === 0) return lines;
 
-    const last = lines.length - 1;
-
     const modeLabel = this.mode === "normal" ? "NORMAL" : "INSERT";
     const pendingHint =
       this.pendingOp ?? (this.pendingG ? "g" : this.pendingR ? "r" : "");
@@ -343,14 +346,23 @@ export class VimEditor extends CustomEditor {
     const hint = countHint || pendingHint ? ` [${countHint}${pendingHint}]` : "";
     const label = ` ${modeLabel}${hint} `;
 
+    // When autocomplete (slash-command suggestions) is NOT showing, the bottom
+    // border is always the last line.  Cache that index so that when suggestions
+    // ARE showing — and super.render() appends their lines after the border —
+    // we still know exactly where the border sits without inspecting line content.
+    if (!this.isShowingAutocomplete()) {
+      this._lastBorderIndex = lines.length - 1;
+    }
+    const borderIndex = this._lastBorderIndex;
+
     // Splice the label into the border a few characters in from the left.
     const INDENT = 2;
-    const lastLine = lines[last]!;
+    const borderLine = lines[borderIndex]!;
     const labelWidth = visibleWidth(label);
-    if (visibleWidth(lastLine) >= INDENT + labelWidth) {
-      const before = truncateToWidth(lastLine, INDENT, "");
-      const after  = sliceByColumn(lastLine, INDENT + labelWidth, width - INDENT - labelWidth);
-      lines[last]  = before + label + after;
+    if (visibleWidth(borderLine) >= INDENT + labelWidth) {
+      const before = truncateToWidth(borderLine, INDENT, "");
+      const after  = sliceByColumn(borderLine, INDENT + labelWidth, width - INDENT - labelWidth);
+      lines[borderIndex] = before + label + after;
     }
 
     return lines;
