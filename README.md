@@ -63,6 +63,18 @@ Examples: `dd`, `dw`, `d$`, `dG`, `3dw`, `cc`, `cw`, `yy`, `yw`, `y$`.
 | `u` | undo |
 | `Ctrl+D` / `Ctrl+U` | scroll down / up |
 
+## Installation
+
+```bash
+pi install git:github.com/kzsh/pi-vi
+```
+
+To test without installing globally:
+
+```bash
+pi -e git:github.com/kzsh/pi-vi
+```
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
