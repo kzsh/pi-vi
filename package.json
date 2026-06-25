@@ -1,8 +1,13 @@
 {
   "name": "@kzsh/pi-vi",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "Vim motions and modal editing for the pi agent input",
   "license": "MIT",
+  "keywords": ["pi-package", "vim", "vi"],
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  },
   "pi": {
     "extensions": ["./index.ts"]
   }
